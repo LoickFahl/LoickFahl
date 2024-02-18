@@ -1,0 +1,7 @@
+#!/bin/bash
+
+sudo systemctl stop dev_auto_rx
+cd dev_auto_rx/radiosonde_auto_rx/auto_rx
+git pull
+./build.sh
+sudo systemctl restart dev_auto_rx
