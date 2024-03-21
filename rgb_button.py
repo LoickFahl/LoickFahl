@@ -9,19 +9,6 @@ red_pin = 16
 green_pin = 19
 blue_pin = 6
 
-# Define services to check
-services_to_check = [
-    "gpsd.socket",
-    "readsb.service",
-    "graphs1090.service",
-    "icecast2.service",
-    "chasemapper.service",
-    "rtl_airband.service",
-    "tar1090.service",
-    "timelapse1090.service",
-    "dev_auto_rx.service"
-]
-
 # Setup GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -43,16 +30,13 @@ red_pwm.start(0)
 green_pwm.start(0)
 blue_pwm.start(0)
 
-# Setup falling edge detection for the button
-GPIO.add_event_detect(button_pin, GPIO.FALLING, callback=lambda x: button_callback(), bouncetime=200)
-
 def set_rgb_color(r, g, b):
     red_pwm.ChangeDutyCycle(r)
     green_pwm.ChangeDutyCycle(g)
     blue_pwm.ChangeDutyCycle(b)
 
-def cycle_rgb():
-    # Cycle through all possible colors
+def fade_rgb():
+    # Fading through all possible colors
     for angle in range(0, 360, 5):
         r = int((1 + sin(radians(angle))) * 50)
         g = int((1 + sin(radians(angle + 120))) * 50)
@@ -62,6 +46,17 @@ def cycle_rgb():
         time.sleep(0.1)
 
 def check_services():
+    services_to_check = [
+        "gpsd.socket",
+        "readsb.service",
+        "graphs1090.service",
+        "icecast2.service",
+        "chasemapper.service",
+        "rtl_airband.service",
+        "tar1090.service",
+        "timelapse1090.service",
+        "dev_auto_rx.service"
+    ]
     for service in services_to_check:
         try:
             subprocess.check_output(["systemctl", "is-active", "--quiet", service])
@@ -73,37 +68,42 @@ def check_services():
     return True
 
 def restart_services():
+    services_to_check = [
+        "gpsd.socket",
+        "readsb.service",
+        "graphs1090.service",
+        "icecast2.service",
+        "chasemapper.service",
+        "rtl_airband.service",
+        "tar1090.service",
+        "timelapse1090.service",
+        "dev_auto_rx.service"
+    ]
     for service in services_to_check:
         subprocess.call(["sudo", "systemctl", "restart", service])
         print(f"Restarting service {service}")
 
-def blink_blue():
-    set_rgb_color(0, 0, 100)  # Set the LED to blue
-    time.sleep(0.5)
-    set_rgb_color(0, 0, 0)  # Turn off the LED
-    time.sleep(0.5)
-    set_rgb_color(0, 0, 100)  # Set the LED to blue
-    time.sleep(0.5)
-    set_rgb_color(0, 0, 0)  # Turn off the LED
-
-def button_callback():
-    print("Button pressed")
-    blink_blue()  # Blink the LED blue twice
-    restart_services()
-    set_rgb_color(0, 100, 0)  # Turn the LED green after restarting services
-    time.sleep(2)  # Allow time for services to start before resuming normal operation
-    services_running = check_services()  # Recheck services
-    if services_running:
-        cycle_rgb()  # Restart RGB cycle
-
 try:
+    # Check services initially
+    if check_services():
+        fade_rgb()  # Start RGB fading if services are running
+    else:
+        set_rgb_color(100, 0, 0)  # Set LED to solid red if any service is stopped
+
     while True:
-        # Check services every 30 minutes (twice per hour)
-        for _ in range(2):
-            services_running = check_services()
-            if services_running:
-                cycle_rgb()
-            time.sleep(900)  # 15 minutes
+        # Continuous check for button press
+        while GPIO.input(button_pin) == GPIO.HIGH:
+            time.sleep(0.1)  # Small delay to avoid high CPU usage
+
+        print("Button pressed")
+
+        # Restart services if any are stopped
+        if not check_services():
+            restart_services()
+            time.sleep(2)  # Wait for services to start before resuming
+
+        # Resume RGB fading
+        fade_rgb()
 
 except KeyboardInterrupt:
     pass
