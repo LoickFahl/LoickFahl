@@ -1,0 +1,19 @@
+
+[Unit]
+Description=auto_rx
+After=syslog.target
+
+[Service]
+# For running outside of a python virtual environment
+# ExecStart=/usr/bin/python3 /home/pi/radiosonde_auto_rx/auto_rx/auto_rx.py -t 0
+
+# For running within a venv, located at /home/pi/radiosonde_auto_rx/auto_rx/venv/
+ExecStart=/home/pi/radiosonde_auto_rx/auto_rx/venv/bin/python3 /home/pi/dev_auto_rx/radiosonde_auto_rx/auto_rx/auto_rx.py -t 0
+Restart=always
+RestartSec=5
+WorkingDirectory=/home/pi/dev_auto_rx/radiosonde_auto_rx/auto_rx/
+User=pi
+SyslogIdentifier=dev_auto_rx
+
+[Install]
+WantedBy=multi-user.target
